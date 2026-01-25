@@ -22,6 +22,11 @@ type RefreshSessionWithUser = Prisma.RefreshSessionGetPayload<{
   };
 }>;
 
+type RefreshSessionForLogout = {
+  id: string;
+  refreshTokenHash: string;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -161,6 +166,39 @@ export class AuthService {
     };
   }
 
+  async logout(refreshToken: string) {
+    const sessions = await this.prisma.refreshSession.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        refreshTokenHash: true,
+      },
+    });
+
+    const session = await this.findMatchingSessionForLogout(
+      refreshToken,
+      sessions,
+    );
+
+    console.log(session);
+
+    if (!session) {
+      return { success: true };
+    }
+
+    console.log(session);
+
+    await this.prisma.refreshSession.update({
+      where: { id: session.id },
+      data: { revokedAt: new Date() },
+    });
+
+    return { success: true };
+  }
+
   private async createRefreshSession(userId: string) {
     const rawToken = randomUUID();
     const hash = await bcrypt.hash(rawToken, 10);
@@ -186,6 +224,19 @@ export class AuthService {
     for (const session of sessions) {
       const match = await bcrypt.compare(token, session.refreshTokenHash);
 
+      if (match) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  private async findMatchingSessionForLogout(
+    token: string,
+    sessions: RefreshSessionForLogout[],
+  ): Promise<RefreshSessionForLogout | null> {
+    for (const session of sessions) {
+      const match = await bcrypt.compare(token, session.refreshTokenHash);
       if (match) {
         return session;
       }
