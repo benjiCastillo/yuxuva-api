@@ -8,24 +8,6 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import dayjs from 'dayjs';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '../../generated/prisma/client';
-
-type RefreshSessionWithUser = Prisma.RefreshSessionGetPayload<{
-  include: {
-    user: {
-      include: {
-        roles: {
-          include: { role: true };
-        };
-      };
-    };
-  };
-}>;
-
-type RefreshSessionForLogout = {
-  id: string;
-  refreshTokenHash: string;
-};
 
 @Injectable()
 export class AuthService {
@@ -45,7 +27,6 @@ export class AuthService {
       },
     });
 
-    // ❌ Usuario no existe o no es local
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException({
         error: 'INVALID_CREDENTIALS',
@@ -53,7 +34,6 @@ export class AuthService {
       });
     }
 
-    // ❌ Password incorrecto
     const validPassword = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!validPassword) {
@@ -63,7 +43,6 @@ export class AuthService {
       });
     }
 
-    // ❌ Usuario inactivo
     if (user.status !== 'ACTIVE') {
       throw new UnauthorizedException({
         error: 'USER_DISABLED',
@@ -71,7 +50,6 @@ export class AuthService {
       });
     }
 
-    // ❌ Email no verificado (si decides exigirlo)
     // if (!user.emailVerified) {
     //   throw new UnauthorizedException({
     //     error: 'EMAIL_NOT_VERIFIED',
@@ -88,7 +66,6 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    // 🔁 Refresh token (persistido)
     const refreshToken = await this.createRefreshSession(user.id);
 
     return {
@@ -105,13 +82,20 @@ export class AuthService {
   }
 
   async refresh(dto: RefreshTokenDto) {
-    // 1️⃣ Buscar sesiones activas
-    const sessions = await this.prisma.refreshSession.findMany({
+    const { refreshToken } = dto;
+    const [tokenId, secret] = refreshToken.split('.');
+    if (!tokenId || !secret) {
+      throw new UnauthorizedException({
+        error: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid or expired',
+      });
+    }
+
+    const session = await this.prisma.refreshSession.findFirst({
       where: {
+        tokenId,
         revokedAt: null,
-        expiresAt: {
-          gt: new Date(),
-        },
+        expiresAt: { gt: new Date() },
       },
       include: {
         user: {
@@ -124,10 +108,16 @@ export class AuthService {
       },
     });
 
-    // 2️⃣ Comparar hash (NO existe búsqueda directa)
-    const session = await this.findMatchingSession(dto.refreshToken, sessions);
-
     if (!session) {
+      throw new UnauthorizedException({
+        error: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid or expired',
+      });
+    }
+
+    const match = await bcrypt.compare(secret, session.refreshTokenHash);
+
+    if (!match) {
       throw new UnauthorizedException({
         error: 'INVALID_REFRESH_TOKEN',
         message: 'Refresh token is invalid or expired',
@@ -136,7 +126,6 @@ export class AuthService {
 
     const user = session.user;
 
-    // 3️⃣ Validaciones de seguridad
     if (user.status !== 'ACTIVE') {
       throw new UnauthorizedException({
         error: 'USER_DISABLED',
@@ -144,7 +133,6 @@ export class AuthService {
       });
     }
 
-    // 4️⃣ Payload JWT
     const payload = {
       sub: user.id,
       email: user.email,
@@ -152,10 +140,8 @@ export class AuthService {
       roles: user.roles.map((r) => r.role.code),
     };
 
-    // 5️⃣ Nuevo access token
     const accessToken = this.jwtService.sign(payload);
 
-    // 6️⃣ (Opcional) rotar refresh token
     await this.revokeSession(session.id);
 
     const newRefreshToken = await this.createRefreshSession(user.id);
@@ -167,29 +153,28 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
-    const sessions = await this.prisma.refreshSession.findMany({
+    const [tokenId, secret] = refreshToken.split('.');
+    if (!tokenId || !secret) {
+      return { success: true };
+    }
+
+    const session = await this.prisma.refreshSession.findFirst({
       where: {
+        tokenId,
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
-      select: {
-        id: true,
-        refreshTokenHash: true,
-      },
     });
-
-    const session = await this.findMatchingSessionForLogout(
-      refreshToken,
-      sessions,
-    );
-
-    console.log(session);
 
     if (!session) {
       return { success: true };
     }
 
-    console.log(session);
+    const match = await bcrypt.compare(secret, session.refreshTokenHash);
+
+    if (!match) {
+      return { success: true };
+    }
 
     await this.prisma.refreshSession.update({
       where: { id: session.id },
@@ -200,8 +185,12 @@ export class AuthService {
   }
 
   private async createRefreshSession(userId: string) {
-    const rawToken = randomUUID();
-    const hash = await bcrypt.hash(rawToken, 10);
+    const tokenId = randomUUID();
+    const secret = randomUUID();
+
+    const rawToken = `${tokenId}.${secret}`;
+    const hash = await bcrypt.hash(secret, 10);
+
     const refreshExpiresIn = this.config.getOrThrow<number>(
       'jwt.refreshExpiresIn',
     ); // 7 days
@@ -209,39 +198,13 @@ export class AuthService {
     await this.prisma.refreshSession.create({
       data: {
         userId,
+        tokenId,
         refreshTokenHash: hash,
         expiresAt: dayjs().add(refreshExpiresIn, 'second').toDate(),
       },
     });
 
     return rawToken;
-  }
-
-  private async findMatchingSession(
-    token: string,
-    sessions: RefreshSessionWithUser[],
-  ): Promise<RefreshSessionWithUser | null> {
-    for (const session of sessions) {
-      const match = await bcrypt.compare(token, session.refreshTokenHash);
-
-      if (match) {
-        return session;
-      }
-    }
-    return null;
-  }
-
-  private async findMatchingSessionForLogout(
-    token: string,
-    sessions: RefreshSessionForLogout[],
-  ): Promise<RefreshSessionForLogout | null> {
-    for (const session of sessions) {
-      const match = await bcrypt.compare(token, session.refreshTokenHash);
-      if (match) {
-        return session;
-      }
-    }
-    return null;
   }
 
   private async revokeSession(sessionId: string) {

@@ -84,6 +84,8 @@ model UserIdentity {
 model RefreshSession {
   id               String   @id @default(uuid())
   userId           String
+
+  tokenId          String?
   refreshTokenHash String
 
   userAgent        String?
@@ -95,7 +97,7 @@ model RefreshSession {
 
   user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, tokenId])
 }
 
 model PasswordReset {
