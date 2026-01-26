@@ -70,6 +70,36 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+
+## Prisma
+Después de modificar el `schema.prisma`, sigue uno de los siguientes flujos según el entorno.
+
+```bash
+npx prisma generate
+```
+
+### Opción 1: Resetear la base de datos (desarrollo)
+
+Usar solo en entorno de desarrollo. Este proceso elimina todos los datos.
+
+```bash
+npx prisma format
+npx prisma migrate reset
+```
+
+### Opción 2: Migrar sin resetear (con datos existentes)
+
+```bash
+npx prisma format
+npx prisma migrate dev --name descripcion_del_cambio
+```
+
+### Ejecutar el seed manualmente
+
+```bash
+npx prisma db seed
+```
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
@@ -96,3 +126,5 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+

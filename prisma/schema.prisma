@@ -112,3 +112,306 @@ model PasswordReset {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model Federation {
+  id String @id @default(uuid())
+
+  name    String @db.VarChar(150)
+  acronym String @unique @db.VarChar(20)
+  country String @db.VarChar(100)
+  status  String @default("ACTIVE") @db.VarChar(20)
+
+  championships Championship[]
+  associations  DepartmentAssociation[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DepartmentAssociation {
+  id           String @id @default(uuid())
+  federationId String
+
+  name       String @db.VarChar(150)
+  department String @db.VarChar(100)
+  status     String @default("ACTIVE") @db.VarChar(20)
+
+  federation Federation             @relation(fields: [federationId], references: [id])
+  calendars  ChampionshipCalendar[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([federationId, name])
+}
+
+model Championship {
+  id           String @id @default(uuid())
+  federationId String
+
+  name     String @db.VarChar(200)
+  modality String @db.VarChar(20) // RALLY | CIRCUITO
+  season   Int
+  status   String @default("PLANNED") @db.VarChar(20)
+
+  federation Federation @relation(fields: [federationId], references: [id])
+
+  categories Category[]
+  calendars  ChampionshipCalendar[]
+  scoring    ScoringSystem[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teams     Team[]
+
+  @@unique([federationId, name, season])
+}
+
+model Category {
+  id             String @id @default(uuid())
+  championshipId String
+
+  name           String  @db.VarChar(100)
+  modality       String  @db.VarChar(20)
+  allowsCodriver Boolean @default(true)
+  pointsApply    Boolean @default(true)
+
+  championship Championship @relation(fields: [championshipId], references: [id])
+
+  cars  CarCategory[]
+  teams Team[]
+
+  createdById String
+  updatedById String?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  raceHeats      RaceHeat[]
+  scoringSystems ScoringSystem[]
+}
+
+model Car {
+  id String @id @default(uuid())
+
+  brand      String  @db.VarChar(100)
+  model      String  @db.VarChar(100)
+  year       Int
+  drivetrain String? @db.VarChar(50)
+  status     String  @default("ACTIVE") @db.VarChar(20)
+
+  categories CarCategory[]
+  teams      Team[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CarCategory {
+  id         String @id @default(uuid())
+  carId      String
+  categoryId String
+
+  validFrom DateTime
+  validTo   DateTime?
+
+  car      Car      @relation(fields: [carId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([carId, categoryId, validFrom])
+}
+
+model Team {
+  id             String @id @default(uuid())
+  championshipId String
+  categoryId     String
+  carId          String
+
+  driverId   String
+  codriverId String?
+
+  competitionNo Int
+  status        String @default("INSCRIBED") @db.VarChar(20)
+
+  championship Championship @relation(fields: [championshipId], references: [id])
+  category     Category     @relation(fields: [categoryId], references: [id])
+  car          Car          @relation(fields: [carId], references: [id])
+
+  rallyResults RallyStageResult[]
+  lapResults   LapResult[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([championshipId, competitionNo])
+}
+
+model ChampionshipCalendar {
+  id             String @id @default(uuid())
+  championshipId String
+  associationId  String
+
+  roundNumber Int
+  eventName   String   @db.VarChar(200)
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("SCHEDULED") @db.VarChar(20)
+
+  championship Championship          @relation(fields: [championshipId], references: [id])
+  association  DepartmentAssociation @relation(fields: [associationId], references: [id])
+
+  modalities ModalidadFecha[]
+  rally      Rally?
+  races      RaceHeat[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([championshipId, roundNumber])
+}
+
+model ModalidadFecha {
+  id         String @id @default(uuid())
+  calendarId String
+  modality   String @db.VarChar(20)
+
+  calendar ChampionshipCalendar @relation(fields: [calendarId], references: [id])
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([calendarId, modality])
+}
+
+model Rally {
+  id         String @id @default(uuid())
+  calendarId String @unique
+  totalKm    Float?
+
+  calendar ChampionshipCalendar @relation(fields: [calendarId], references: [id])
+  stages   RallyStage[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+}
+
+model RallyStage {
+  id      String @id @default(uuid())
+  rallyId String
+
+  name       String @db.VarChar(150)
+  stageType  String @db.VarChar(20) // ES | ENLACE
+  stageOrder Int
+  distanceKm Float
+
+  rally   Rally              @relation(fields: [rallyId], references: [id])
+  results RallyStageResult[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+}
+
+model RallyStageResult {
+  id      String @id @default(uuid())
+  stageId String
+  teamId  String
+
+  time    Int
+  penalty Int    @default(0)
+  status  String @default("OK") @db.VarChar(20)
+
+  stage RallyStage @relation(fields: [stageId], references: [id])
+  team  Team       @relation(fields: [teamId], references: [id])
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([stageId, teamId])
+}
+
+model RaceHeat {
+  id         String @id @default(uuid())
+  calendarId String
+  categoryId String
+
+  heatNumber Int
+  startTime  DateTime
+
+  calendar ChampionshipCalendar @relation(fields: [calendarId], references: [id])
+  category Category             @relation(fields: [categoryId], references: [id])
+
+  laps LapResult[]
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+}
+
+model LapResult {
+  id     String @id @default(uuid())
+  heatId String
+  teamId String
+
+  lapNo   Int
+  lapTime Int
+
+  heat RaceHeat @relation(fields: [heatId], references: [id])
+  team Team     @relation(fields: [teamId], references: [id])
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([heatId, teamId, lapNo])
+}
+
+model ScoringSystem {
+  id             String @id @default(uuid())
+  championshipId String
+  categoryId     String
+
+  position Int
+  points   Int
+
+  championship Championship @relation(fields: [championshipId], references: [id])
+  category     Category     @relation(fields: [categoryId], references: [id])
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([championshipId, categoryId, position])
+}

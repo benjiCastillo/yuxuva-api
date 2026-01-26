@@ -99,6 +99,250 @@ async function main() {
   });
 
   console.log('✅ Rol ADMIN asignado');
+
+  /* =========================
+   * CAMPEONATOS FEBAD
+   * ========================= */
+
+  const admin = await prisma.user.findUnique({
+    where: { email: 'benji@gmail.com' },
+  });
+
+  if (!admin) {
+    throw new Error('Usuario admin no encontrado para seed de campeonatos');
+  }
+
+  /* =========================
+   * FEDERACION
+   * ========================= */
+  const febad = await prisma.federation.upsert({
+    where: { acronym: 'FEBAD' },
+    update: {},
+    create: {
+      name: 'Federación Boliviana de Automovilismo Deportivo',
+      acronym: 'FEBAD',
+      country: 'Bolivia',
+      status: 'ACTIVE',
+      createdById: admin.id,
+    },
+  });
+
+  /* =========================
+   * ASOCIACIONES
+   * ========================= */
+  const associationsData = [
+    'Potosí',
+    'La Paz',
+    'Sucre',
+    'Oruro',
+    'Tarija',
+    'Cochabamba',
+    'Santa Cruz',
+  ];
+
+  const associations: Record<string, any> = {};
+
+  for (const dept of associationsData) {
+    associations[dept] = await prisma.departmentAssociation.upsert({
+      where: {
+        federationId_name: {
+          federationId: febad.id,
+          name: `Asociación Departamental de Automovilismo ${dept}`,
+        },
+      },
+      update: {},
+      create: {
+        federationId: febad.id,
+        name: `Asociación Departamental de Automovilismo ${dept}`,
+        department: dept,
+        status: 'ACTIVE',
+        createdById: admin.id,
+      },
+    });
+  }
+
+  /* =========================
+   * CAMPEONATOS
+   * ========================= */
+  const circuitChampionship = await prisma.championship.upsert({
+    where: {
+      federationId_name_season: {
+        federationId: febad.id,
+        name: 'Campeonato de Circuitos Kenny Prieto Melgarejo',
+        season: 2025,
+      },
+    },
+    update: {},
+    create: {
+      federationId: febad.id,
+      name: 'Campeonato de Circuitos Kenny Prieto Melgarejo',
+      modality: 'CIRCUITO',
+      season: 2025,
+      status: 'PLANNED',
+      createdById: admin.id,
+    },
+  });
+
+  const rallyChampionship = await prisma.championship.upsert({
+    where: {
+      federationId_name_season: {
+        federationId: febad.id,
+        name: 'Campeonato de Rally Carlos Zenteno Pareja',
+        season: 2025,
+      },
+    },
+    update: {},
+    create: {
+      federationId: febad.id,
+      name: 'Campeonato de Rally Carlos Zenteno Pareja',
+      modality: 'RALLY',
+      season: 2025,
+      status: 'PLANNED',
+      createdById: admin.id,
+    },
+  });
+
+  /* =========================
+   * CALENDARIO – CIRCUITO
+   * ========================= */
+  const circuitDates = [
+    {
+      round: 1,
+      dept: 'Potosí',
+      name: 'Montaña de Plata Potosí',
+      start: '2025-04-03',
+      end: '2025-04-05',
+    },
+    {
+      round: 2,
+      dept: 'La Paz',
+      name: 'Circuito La Paz',
+      start: '2025-05-01',
+      end: '2025-05-03',
+    },
+    {
+      round: 3,
+      dept: 'Sucre',
+      name: 'Circuito Oscar Crespo Sucre',
+      start: '2025-05-29',
+      end: '2025-05-31',
+    },
+    {
+      round: 4,
+      dept: 'Oruro',
+      name: 'Circuito Mario Mercado Vaca Guzmán',
+      start: '2025-09-11',
+      end: '2025-09-13',
+    },
+  ];
+
+  for (const d of circuitDates) {
+    const calendar = await prisma.championshipCalendar.upsert({
+      where: {
+        championshipId_roundNumber: {
+          championshipId: circuitChampionship.id,
+          roundNumber: d.round,
+        },
+      },
+      update: {},
+      create: {
+        championshipId: circuitChampionship.id,
+        associationId: associations[d.dept].id,
+        roundNumber: d.round,
+        eventName: d.name,
+        startDate: new Date(d.start),
+        endDate: new Date(d.end),
+        status: 'SCHEDULED',
+        createdById: admin.id,
+      },
+    });
+
+    await prisma.modalidadFecha.upsert({
+      where: {
+        calendarId_modality: {
+          calendarId: calendar.id,
+          modality: 'CIRCUITO',
+        },
+      },
+      update: {},
+      create: {
+        calendarId: calendar.id,
+        modality: 'CIRCUITO',
+        createdById: admin.id,
+      },
+    });
+  }
+
+  /* =========================
+   * CALENDARIO – RALLY
+   * ========================= */
+  const rallyDates = [
+    {
+      round: 1,
+      dept: 'Tarija',
+      name: 'Rally Andaluz',
+      start: '2025-03-05',
+      end: '2025-03-08',
+    },
+    {
+      round: 2,
+      dept: 'Cochabamba',
+      name: 'Rally de la Concordia',
+      start: '2025-06-25',
+      end: '2025-06-28',
+    },
+    {
+      round: 3,
+      dept: 'Sucre',
+      name: 'Rally Capital Codasur',
+      start: '2025-07-23',
+      end: '2025-07-26',
+    },
+    {
+      round: 4,
+      dept: 'Santa Cruz',
+      name: 'Rally Concepción',
+      start: '2025-08-13',
+      end: '2025-08-16',
+    },
+  ];
+
+  for (const d of rallyDates) {
+    const calendar = await prisma.championshipCalendar.upsert({
+      where: {
+        championshipId_roundNumber: {
+          championshipId: rallyChampionship.id,
+          roundNumber: d.round,
+        },
+      },
+      update: {},
+      create: {
+        championshipId: rallyChampionship.id,
+        associationId: associations[d.dept].id,
+        roundNumber: d.round,
+        eventName: d.name,
+        startDate: new Date(d.start),
+        endDate: new Date(d.end),
+        status: 'SCHEDULED',
+        createdById: admin.id,
+      },
+    });
+
+    await prisma.modalidadFecha.upsert({
+      where: {
+        calendarId_modality: {
+          calendarId: calendar.id,
+          modality: 'RALLY',
+        },
+      },
+      update: {},
+      create: {
+        calendarId: calendar.id,
+        modality: 'RALLY',
+        createdById: admin.id,
+      },
+    });
+  }
 }
 
 main()
