@@ -5,9 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -15,52 +15,52 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String?  @unique
+  id            String  @id @default(uuid())
+  email         String? @unique @db.VarChar(255)
   passwordHash  String?
-  name          String?
+  name          String? @db.VarChar(150)
   avatarUrl     String?
-  emailVerified Boolean  @default(false)
+  emailVerified Boolean @default(false)
 
-  status        String   @default("ACTIVE")
-  tokenVersion  Int      @default(1)
-
-  createdById   String?
-  updatedById   String?
-
-  roles         UserRole[]
-  identities    UserIdentity[]
-  sessions      RefreshSession[]
-  passwordResets PasswordReset[]
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-}
-
-model Role {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  isSystem    Boolean  @default(false)
+  status       String @default("ACTIVE") @db.VarChar(20)
+  tokenVersion Int    @default(1)
 
   createdById String?
   updatedById String?
 
-  users       UserRole[]
+  roles          UserRole[]
+  identities     UserIdentity[]
+  sessions       RefreshSession[]
+  passwordResets PasswordReset[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Role {
+  id          String  @id @default(uuid())
+  code        String  @unique @db.VarChar(50)
+  name        String  @db.VarChar(150)
+  description String?
+  isSystem    Boolean @default(false)
+
+  createdById String?
+  updatedById String?
+
+  users UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model UserRole {
-  id        String   @id @default(uuid())
-  userId    String
-  roleId    String
+  id     String @id @default(uuid())
+  userId String
+  roleId String
 
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -68,46 +68,47 @@ model UserRole {
 }
 
 model UserIdentity {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   userId         String
-  provider       String
-  providerUserId String
-  email          String?
+  provider       String  @db.VarChar(50)
+  providerUserId String  @db.VarChar(255)
+  email          String? @db.VarChar(255)
 
-  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([provider, providerUserId])
 }
 
 model RefreshSession {
-  id               String   @id @default(uuid())
-  userId           String
+  id     String @id @default(uuid())
+  userId String
 
-  tokenId          String?
+  tokenId          String? @db.VarChar(255)
   refreshTokenHash String
 
-  userAgent        String?
-  ipAddress        String?  @db.Inet
+  userAgent String? @db.VarChar(255)
+  ipAddress String? @db.Inet
 
-  expiresAt        DateTime
-  revokedAt        DateTime?
-  createdAt        DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
 
-  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, tokenId])
 }
 
 model PasswordReset {
-  id         String   @id @default(uuid())
-  userId     String
-  tokenHash  String
+  id     String @id @default(uuid())
+  userId String
 
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
+  tokenHash String
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
