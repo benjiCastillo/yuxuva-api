@@ -237,7 +237,7 @@ async function main() {
   ];
 
   for (const d of circuitDates) {
-    const calendar = await prisma.championshipCalendar.upsert({
+    await prisma.championshipCalendar.upsert({
       where: {
         championshipId_roundNumber: {
           championshipId: circuitChampionship.id,
@@ -253,21 +253,6 @@ async function main() {
         startDate: new Date(d.start),
         endDate: new Date(d.end),
         status: 'SCHEDULED',
-        createdById: admin.id,
-      },
-    });
-
-    await prisma.modalidadFecha.upsert({
-      where: {
-        calendarId_modality: {
-          calendarId: calendar.id,
-          modality: 'CIRCUITO',
-        },
-      },
-      update: {},
-      create: {
-        calendarId: calendar.id,
-        modality: 'CIRCUITO',
         createdById: admin.id,
       },
     });
@@ -308,7 +293,7 @@ async function main() {
   ];
 
   for (const d of rallyDates) {
-    const calendar = await prisma.championshipCalendar.upsert({
+    await prisma.championshipCalendar.upsert({
       where: {
         championshipId_roundNumber: {
           championshipId: rallyChampionship.id,
@@ -324,21 +309,6 @@ async function main() {
         startDate: new Date(d.start),
         endDate: new Date(d.end),
         status: 'SCHEDULED',
-        createdById: admin.id,
-      },
-    });
-
-    await prisma.modalidadFecha.upsert({
-      where: {
-        calendarId_modality: {
-          calendarId: calendar.id,
-          modality: 'RALLY',
-        },
-      },
-      update: {},
-      create: {
-        calendarId: calendar.id,
-        modality: 'RALLY',
         createdById: admin.id,
       },
     });

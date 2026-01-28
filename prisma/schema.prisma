@@ -279,9 +279,8 @@ model ChampionshipCalendar {
   championship Championship          @relation(fields: [championshipId], references: [id])
   association  DepartmentAssociation @relation(fields: [associationId], references: [id])
 
-  modalities ModalidadFecha[]
-  rally      Rally?
-  races      RaceHeat[]
+  rally Rally?
+  races RaceHeat[]
 
   createdById String
   updatedById String?
@@ -290,21 +289,6 @@ model ChampionshipCalendar {
   updatedAt DateTime @updatedAt
 
   @@unique([championshipId, roundNumber])
-}
-
-model ModalidadFecha {
-  id         String @id @default(uuid())
-  calendarId String
-  modality   String @db.VarChar(20)
-
-  calendar ChampionshipCalendar @relation(fields: [calendarId], references: [id])
-
-  createdById String
-  updatedById String?
-
-  createdAt DateTime @default(now())
-
-  @@unique([calendarId, modality])
 }
 
 model Rally {
