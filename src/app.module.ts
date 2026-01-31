@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { envValidationSchema } from './config/env.validation';
 import { UsersModule } from './users/users.module';
@@ -13,6 +14,23 @@ import { ChampionshipsModule } from './championships/championships.module';
       isGlobal: true,
       load: [configuration],
       validationSchema: envValidationSchema,
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const throttle = configService.get<{ ttl: number; limit: number }>(
+          'throttle',
+        );
+        return {
+          throttlers: [
+            {
+              ttl: throttle?.ttl ?? 60000,
+              limit: throttle?.limit ?? 20,
+            },
+          ],
+        };
+      },
     }),
     PrismaModule,
     UsersModule,

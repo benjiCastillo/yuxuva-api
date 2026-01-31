@@ -30,7 +30,6 @@ export class ChampionshipsController {
     @Body() createChampionshipDto: CreateChampionshipDto,
     @CurrentUser() user: CurrentUserType,
   ) {
-    console.log(user);
     return this.championshipsService.create(createChampionshipDto, user.id);
   }
 
@@ -53,8 +52,7 @@ export class ChampionshipsController {
     @Body() updateChampionshipDto: UpdateChampionshipDto,
     @CurrentUser() user: CurrentUserType,
   ) {
-    console.log(user);
-    return this.championshipsService.update(id, updateChampionshipDto);
+    return this.championshipsService.update(id, updateChampionshipDto, user.id);
   }
 
   @Roles('ADMIN')

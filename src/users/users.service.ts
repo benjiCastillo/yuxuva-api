@@ -2,11 +2,14 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import type { CurrentUser } from '../auth/interfaces/current-user.interface';
+import { GetPaginationParamsDto } from '../common/dto/get-pagination-params.dto';
 
 @Injectable()
 export class UsersService {
@@ -42,23 +45,50 @@ export class UsersService {
   }
 
   // LIST
-  async findAll() {
-    return this.prisma.user.findMany({
-      where: { deletedAt: null },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        status: true,
-        createdAt: true,
+  async findAll(query: GetPaginationParamsDto) {
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where: { deletedAt: null },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.user.count({ where: { deletedAt: null } }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   // GET BY ID
   async findOne(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!user) {
@@ -69,12 +99,19 @@ export class UsersService {
   }
 
   // UPDATE
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateUserDto, currentUser: CurrentUser) {
     await this.findOne(id);
 
     const data: any = { ...dto };
 
     delete data.password;
+
+    if (!this.isAdmin(currentUser)) {
+      if (currentUser.id !== id) {
+        throw new ForbiddenException('You cannot update this user');
+      }
+      delete data.status;
+    }
 
     return this.prisma.user.update({
       where: { id },
@@ -90,8 +127,12 @@ export class UsersService {
   }
 
   // SOFT DELETE
-  async remove(id: string) {
+  async remove(id: string, currentUser: CurrentUser) {
     await this.findOne(id);
+
+    if (!this.isAdmin(currentUser) && currentUser.id !== id) {
+      throw new ForbiddenException('You cannot delete this user');
+    }
 
     return this.prisma.user.update({
       where: { id },
@@ -99,6 +140,18 @@ export class UsersService {
         deletedAt: new Date(),
         status: 'BLOCKED',
       },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     });
+  }
+
+  private isAdmin(user: CurrentUser) {
+    return user.roles?.includes('ADMIN');
   }
 }

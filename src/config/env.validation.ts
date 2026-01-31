@@ -13,4 +13,7 @@ export const envValidationSchema = Joi.object({
 
   JWT_ACCESS_EXPIRES_IN: Joi.number().integer().positive().default(900),
   JWT_REFRESH_EXPIRES_IN: Joi.number().integer().positive().default(604800),
+
+  THROTTLE_TTL: Joi.number().integer().positive().default(60),
+  THROTTLE_LIMIT: Joi.number().integer().positive().default(5),
 });

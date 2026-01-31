@@ -47,6 +47,16 @@ export class ChampionshipsService {
         skip,
         take: queryChampionshipDto.limit,
         orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          modality: true,
+          season: true,
+          status: true,
+          federationId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       this.prisma.championship.count(),
     ]);
@@ -65,6 +75,16 @@ export class ChampionshipsService {
   async findOne(id: string) {
     const championship = await this.prisma.championship.findUnique({
       where: { id },
+      select: {
+        id: true,
+        name: true,
+        modality: true,
+        season: true,
+        status: true,
+        federationId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     if (!championship) {
       throw new NotFoundException('Championship not found');
@@ -72,10 +92,26 @@ export class ChampionshipsService {
     return championship;
   }
 
-  update(id: string, updateChampionshipDto: UpdateChampionshipDto) {
+  update(
+    id: string,
+    updateChampionshipDto: UpdateChampionshipDto,
+    userId: string,
+  ) {
     return this.prisma.championship.update({
       where: { id },
-      data: updateChampionshipDto,
+      data: {
+        ...updateChampionshipDto,
+        updatedById: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        modality: true,
+        season: true,
+        status: true,
+        federationId: true,
+        updatedAt: true,
+      },
     });
   }
 
