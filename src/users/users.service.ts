@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,6 +18,8 @@ export class UsersService {
 
   // REGISTER
   async create(dto: CreateUserDto) {
+    const roleCodes = dto.roles ? Array.from(new Set(dto.roles)) : [];
+
     const exists = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -27,20 +30,50 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    return this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        name: dto.name,
-        status: 'ACTIVE',
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        status: true,
-        createdAt: true,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      let roles: { id: string; code: string }[] = [];
+
+      if (roleCodes.length > 0) {
+        roles = await tx.role.findMany({
+          where: { code: { in: roleCodes } },
+          select: { id: true, code: true },
+        });
+
+        if (roles.length !== roleCodes.length) {
+          const foundCodes = new Set(roles.map((r) => r.code));
+          const missing = roleCodes.filter((code) => !foundCodes.has(code));
+          throw new BadRequestException(
+            `Roles invalidos: ${missing.join(', ')}`,
+          );
+        }
+      }
+
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          name: dto.name,
+          status: 'ACTIVE',
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+
+      if (roles.length > 0) {
+        await tx.userRole.createMany({
+          data: roles.map((role) => ({
+            userId: user.id,
+            roleId: role.id,
+          })),
+        });
+      }
+
+      return user;
     });
   }
 

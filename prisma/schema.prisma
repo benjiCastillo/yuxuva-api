@@ -85,7 +85,7 @@ model RefreshSession {
   id     String @id @default(uuid())
   userId String
 
-  tokenId          String? @db.VarChar(255)
+  tokenId          String  @unique @db.VarChar(255)
   refreshTokenHash String
 
   userAgent String? @db.VarChar(255)
@@ -97,6 +97,7 @@ model RefreshSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([tokenId, revokedAt, expiresAt])
   @@index([userId, tokenId])
 }
 
