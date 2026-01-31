@@ -135,27 +135,76 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, currentUser: CurrentUser) {
     await this.findOne(id);
 
-    const data: any = { ...dto };
-
-    delete data.password;
+    const roleCodes = dto.roles ? Array.from(new Set(dto.roles)) : [];
 
     if (!this.isAdmin(currentUser)) {
       if (currentUser.id !== id) {
         throw new ForbiddenException('You cannot update this user');
       }
-      delete data.status;
+      if (roleCodes.length > 0) {
+        throw new ForbiddenException('You cannot update roles');
+      }
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        status: true,
-        updatedAt: true,
-      },
+    const data: {
+      email?: string;
+      name?: string;
+      status?: string;
+      passwordHash?: string;
+    } = {};
+
+    if (dto.email) data.email = dto.email;
+    if (dto.name) data.name = dto.name;
+
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    if (dto.status) {
+      data.status = dto.status;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let roles: { id: string; code: string }[] = [];
+
+      if (roleCodes.length > 0) {
+        roles = await tx.role.findMany({
+          where: { code: { in: roleCodes } },
+          select: { id: true, code: true },
+        });
+
+        if (roles.length !== roleCodes.length) {
+          const foundCodes = new Set(roles.map((r) => r.code));
+          const missing = roleCodes.filter((code) => !foundCodes.has(code));
+          throw new BadRequestException(
+            `Roles invalidos: ${missing.join(', ')}`,
+          );
+        }
+      }
+
+      const user = await tx.user.update({
+        where: { id },
+        data,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+
+      if (roleCodes.length > 0) {
+        await tx.userRole.deleteMany({ where: { userId: id } });
+        await tx.userRole.createMany({
+          data: roles.map((role) => ({
+            userId: id,
+            roleId: role.id,
+          })),
+        });
+      }
+
+      return user;
     });
   }
 

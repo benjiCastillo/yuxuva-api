@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import dayjs from 'dayjs';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -81,8 +80,7 @@ export class AuthService {
     };
   }
 
-  async refresh(dto: RefreshTokenDto) {
-    const { refreshToken } = dto;
+  async refresh(refreshToken: string) {
     const [tokenId, secret] = refreshToken.split('.');
     if (!tokenId || !secret) {
       throw new UnauthorizedException({
