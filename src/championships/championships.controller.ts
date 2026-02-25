@@ -58,6 +58,6 @@ export class ChampionshipsController {
   @Roles('ADMIN')
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.championshipsService.remove(+id);
+    return this.championshipsService.remove(id);
   }
 }

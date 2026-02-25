@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { CreateChampionshipDto } from './dto/create-championship.dto';
 import { UpdateChampionshipDto } from './dto/update-championship.dto';
@@ -19,35 +23,44 @@ export class ChampionshipsService {
       throw new NotFoundException('Federation not found');
     }
 
-    return this.prisma.championship.create({
-      data: {
-        name: createChampionshipDto.name,
-        modality: createChampionshipDto.modality,
-        season: createChampionshipDto.season,
-        ...(createChampionshipDto.status
-          ? { status: createChampionshipDto.status }
-          : {}),
-        federation: {
-          connect: {
-            id: createChampionshipDto.federationId,
+    try {
+      return await this.prisma.championship.create({
+        data: {
+          name: createChampionshipDto.name,
+          modality: createChampionshipDto.modality,
+          season: createChampionshipDto.season,
+          ...(createChampionshipDto.status
+            ? { status: createChampionshipDto.status }
+            : {}),
+          federation: {
+            connect: {
+              id: createChampionshipDto.federationId,
+            },
+          },
+          createdById: userId,
+        },
+        select: {
+          id: true,
+          name: true,
+          modality: true,
+          season: true,
+          status: true,
+          federation: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-        createdById: userId,
-      },
-      select: {
-        id: true,
-        name: true,
-        modality: true,
-        season: true,
-        status: true,
-        federation: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new BadRequestException(
+          'El nombre ya existe para esta federación y temporada.',
+        );
+      }
+      throw error;
+    }
   }
 
   async findAll(queryChampionshipDto: QueryChampionshipDto) {
@@ -153,7 +166,20 @@ export class ChampionshipsService {
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} championship`;
+  async remove(id: string) {
+    try {
+      return this.prisma.championship.delete({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Championship not found');
+      }
+      throw error;
+    }
   }
 }
