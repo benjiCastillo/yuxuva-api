@@ -53,8 +53,11 @@ export class ChampionshipsService {
           },
         },
       });
-    } catch (error) {
-      if (error.code === 'P2002') {
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         throw new BadRequestException(
           'El nombre ya existe para esta federación y temporada.',
         );
@@ -168,16 +171,27 @@ export class ChampionshipsService {
 
   async remove(id: string) {
     try {
-      return this.prisma.championship.delete({
+      return await this.prisma.championship.delete({
         where: { id },
         select: {
           id: true,
           name: true,
         },
       });
-    } catch (error) {
-      if (error.code === 'P2025') {
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
         throw new NotFoundException('Championship not found');
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new BadRequestException(
+          'No se puede eliminar el campeonato porque tiene calendarios asociados.',
+        );
       }
       throw error;
     }
