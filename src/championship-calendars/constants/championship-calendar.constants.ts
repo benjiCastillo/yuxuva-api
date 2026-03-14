@@ -1,0 +1,6 @@
+export const CHAMPIONSHIP_CALENDAR_STATUSES = [
+  'SCHEDULED',
+  'ONGOING',
+  'COMPLETED',
+  'CANCELLED',
+] as const;

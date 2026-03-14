@@ -7,6 +7,8 @@ import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { ChampionshipsModule } from './championships/championships.module';
+import { ChampionshipCalendarsModule } from './championship-calendars/championship-calendars.module';
+import { DepartmentAssociationsModule } from './department-associations/department-associations.module';
 import { FederationsModule } from './federations/federations.module';
 
 @Module({
@@ -37,6 +39,8 @@ import { FederationsModule } from './federations/federations.module';
     UsersModule,
     AuthModule,
     ChampionshipsModule,
+    ChampionshipCalendarsModule,
+    DepartmentAssociationsModule,
     FederationsModule,
   ],
 })
