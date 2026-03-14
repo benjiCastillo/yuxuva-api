@@ -146,6 +146,31 @@ export class ChampionshipsService {
     return championship;
   }
 
+  async selectData() {
+    return await this.prisma.championship.findMany({
+      where: {
+        status: {
+          in: ['PLANNED', 'ACTIVE'],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        modality: true,
+        season: true,
+        status: true,
+        federationId: true,
+        federation: {
+          select: {
+            name: true,
+            acronym: true,
+          },
+        },
+      },
+      orderBy: [{ season: 'desc' }, { name: 'asc' }],
+    });
+  }
+
   update(
     id: string,
     updateChampionshipDto: UpdateChampionshipDto,

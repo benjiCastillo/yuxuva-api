@@ -47,6 +47,12 @@ export class ChampionshipCalendarsController {
   }
 
   @Roles('ADMIN')
+  @Get('select-data')
+  selectData() {
+    return this.championshipCalendarsService.selectData();
+  }
+
+  @Roles('ADMIN')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.championshipCalendarsService.findOne(id);

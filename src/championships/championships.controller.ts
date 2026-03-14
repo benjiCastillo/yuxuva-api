@@ -40,6 +40,12 @@ export class ChampionshipsController {
   }
 
   @Roles('ADMIN')
+  @Get('select-data')
+  selectData() {
+    return this.championshipsService.selectData();
+  }
+
+  @Roles('ADMIN')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.championshipsService.findOne(id);

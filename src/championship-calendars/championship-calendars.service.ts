@@ -175,6 +175,39 @@ export class ChampionshipCalendarsService {
     return calendar;
   }
 
+  async selectData() {
+    return await this.prisma.championshipCalendar.findMany({
+      where: {
+        status: {
+          in: ['SCHEDULED', 'ONGOING'],
+        },
+      },
+      select: {
+        id: true,
+        eventName: true,
+        roundNumber: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+        championshipId: true,
+        associationId: true,
+        championship: {
+          select: {
+            name: true,
+            season: true,
+          },
+        },
+        association: {
+          select: {
+            name: true,
+            department: true,
+          },
+        },
+      },
+      orderBy: [{ startDate: 'asc' }, { roundNumber: 'asc' }],
+    });
+  }
+
   async update(
     id: string,
     updateChampionshipCalendarDto: UpdateChampionshipCalendarDto,
