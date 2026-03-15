@@ -138,7 +138,9 @@ export class CarsService {
           ...(updateCarDto.model !== undefined
             ? { model: updateCarDto.model }
             : {}),
-          ...(updateCarDto.year !== undefined ? { year: updateCarDto.year } : {}),
+          ...(updateCarDto.year !== undefined
+            ? { year: updateCarDto.year }
+            : {}),
           ...(updateCarDto.drivetrain !== undefined
             ? { drivetrain: updateCarDto.drivetrain }
             : {}),

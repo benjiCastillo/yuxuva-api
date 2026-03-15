@@ -238,6 +238,33 @@ model CarCategory {
   @@unique([carId, categoryId, validFrom])
 }
 
+model Driver {
+  id String @id @default(uuid())
+
+  firstName      String  @db.VarChar(100)
+  lastName       String  @db.VarChar(100)
+  documentType   String? @db.VarChar(30)
+  documentNumber String? @unique @db.VarChar(50)
+  licenseNumber  String? @unique @db.VarChar(50)
+  nationality    String? @db.VarChar(100)
+  birthDate      DateTime? @db.Date
+  phone          String? @db.VarChar(30)
+  email          String? @unique @db.VarChar(255)
+  bloodType      String? @db.VarChar(10)
+  address        String?
+  photoUrl       String?
+  status         String  @default("ACTIVE") @db.VarChar(20)
+
+  driverTeams   Team[] @relation("TeamDriver")
+  codriverTeams Team[] @relation("TeamCodriver")
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Team {
   id             String @id @default(uuid())
   championshipId String
@@ -253,6 +280,8 @@ model Team {
   championship Championship @relation(fields: [championshipId], references: [id])
   category     Category     @relation(fields: [categoryId], references: [id])
   car          Car          @relation(fields: [carId], references: [id])
+  driver       Driver       @relation("TeamDriver", fields: [driverId], references: [id])
+  codriver     Driver?      @relation("TeamCodriver", fields: [codriverId], references: [id])
 
   rallyResults RallyStageResult[]
   lapResults   LapResult[]
@@ -263,6 +292,8 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([driverId])
+  @@index([codriverId])
   @@unique([championshipId, competitionNo])
 }
 

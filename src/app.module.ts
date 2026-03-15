@@ -6,12 +6,15 @@ import { envValidationSchema } from './config/env.validation';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { CarCategoriesModule } from './car-categories/car-categories.module';
 import { CarsModule } from './cars/cars.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChampionshipsModule } from './championships/championships.module';
 import { ChampionshipCalendarsModule } from './championship-calendars/championship-calendars.module';
 import { DepartmentAssociationsModule } from './department-associations/department-associations.module';
+import { DriversModule } from './drivers/drivers.module';
 import { FederationsModule } from './federations/federations.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
@@ -40,12 +43,15 @@ import { FederationsModule } from './federations/federations.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    CarCategoriesModule,
     CarsModule,
     CategoriesModule,
     ChampionshipsModule,
     ChampionshipCalendarsModule,
     DepartmentAssociationsModule,
+    DriversModule,
     FederationsModule,
+    TeamsModule,
   ],
 })
 export class AppModule {}
