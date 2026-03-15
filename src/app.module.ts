@@ -6,6 +6,8 @@ import { envValidationSchema } from './config/env.validation';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { CarsModule } from './cars/cars.module';
+import { CategoriesModule } from './categories/categories.module';
 import { ChampionshipsModule } from './championships/championships.module';
 import { ChampionshipCalendarsModule } from './championship-calendars/championship-calendars.module';
 import { DepartmentAssociationsModule } from './department-associations/department-associations.module';
@@ -38,6 +40,8 @@ import { FederationsModule } from './federations/federations.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    CarsModule,
+    CategoriesModule,
     ChampionshipsModule,
     ChampionshipCalendarsModule,
     DepartmentAssociationsModule,
