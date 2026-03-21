@@ -14,6 +14,7 @@ import { ChampionshipCalendarsModule } from './championship-calendars/championsh
 import { DepartmentAssociationsModule } from './department-associations/department-associations.module';
 import { DriversModule } from './drivers/drivers.module';
 import { FederationsModule } from './federations/federations.module';
+import { RalliesModule } from './rallies/rallies.module';
 import { TeamsModule } from './teams/teams.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { TeamsModule } from './teams/teams.module';
     DepartmentAssociationsModule,
     DriversModule,
     FederationsModule,
+    RalliesModule,
     TeamsModule,
   ],
 })
