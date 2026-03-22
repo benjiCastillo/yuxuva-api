@@ -360,6 +360,8 @@ model RallyStageResult {
   stageId String
   teamId  String
 
+  startTime DateTime
+  endTime   DateTime
   time    Int
   penalty Int    @default(0)
   status  String @default("OK") @db.VarChar(20)

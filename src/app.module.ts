@@ -15,6 +15,8 @@ import { DepartmentAssociationsModule } from './department-associations/departme
 import { DriversModule } from './drivers/drivers.module';
 import { FederationsModule } from './federations/federations.module';
 import { RalliesModule } from './rallies/rallies.module';
+import { RallyStageResultsModule } from './rally-stage-results/rally-stage-results.module';
+import { RallyStagesModule } from './rally-stages/rally-stages.module';
 import { TeamsModule } from './teams/teams.module';
 
 @Module({
@@ -53,6 +55,8 @@ import { TeamsModule } from './teams/teams.module';
     DriversModule,
     FederationsModule,
     RalliesModule,
+    RallyStageResultsModule,
+    RallyStagesModule,
     TeamsModule,
   ],
 })
