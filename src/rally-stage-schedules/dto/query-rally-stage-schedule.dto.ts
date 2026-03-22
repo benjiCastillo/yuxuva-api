@@ -10,8 +10,8 @@ import {
 } from 'class-validator';
 import { GetPaginationParamsDto } from 'src/common/dto/get-pagination-params.dto';
 
-export class QueryRallyStageResultDto extends GetPaginationParamsDto {
-  @ApiPropertyOptional({ description: 'Filter by schedule id' })
+export class QueryRallyStageScheduleDto extends GetPaginationParamsDto {
+  @ApiPropertyOptional({ description: 'Filter by stage schedule id' })
   @Transform(({ value }) => {
     if (value === undefined || value === null) return undefined;
     const normalized = String(value).trim();
@@ -19,7 +19,7 @@ export class QueryRallyStageResultDto extends GetPaginationParamsDto {
   })
   @IsOptional()
   @IsUUID()
-  scheduleId?: string;
+  id?: string;
 
   @ApiPropertyOptional({ description: 'Filter by stage id' })
   @Transform(({ value }) => {
@@ -81,7 +81,7 @@ export class QueryRallyStageResultDto extends GetPaginationParamsDto {
   @IsUUID()
   categoryId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by result status' })
+  @ApiPropertyOptional({ description: 'Filter by schedule status' })
   @Transform(({ value }) => {
     if (value === undefined || value === null) return undefined;
     const normalized = String(value).trim().toUpperCase();
@@ -92,23 +92,13 @@ export class QueryRallyStageResultDto extends GetPaginationParamsDto {
   @MaxLength(20)
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by minimum time' })
+  @ApiPropertyOptional({ description: 'Filter by start order' })
   @Transform(({ value }) => {
     if (value === undefined || value === null || value === '') return undefined;
     return Number(value);
   })
   @IsOptional()
   @IsInt()
-  @Min(0)
-  timeFrom?: number;
-
-  @ApiPropertyOptional({ description: 'Filter by maximum time' })
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    return Number(value);
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  timeTo?: number;
+  @Min(1)
+  startOrder?: number;
 }

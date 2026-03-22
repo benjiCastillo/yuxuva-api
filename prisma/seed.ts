@@ -313,6 +313,142 @@ async function main() {
       },
     });
   }
+
+  /* =========================
+   * CATEGORIA PROMOCIONAL + 20 TEAMS TEST
+   * ========================= */
+  let promotionalCategory = await prisma.category.findFirst({
+    where: {
+      championshipId: rallyChampionship.id,
+      name: 'PROMOCIONAL',
+    },
+  });
+
+  if (!promotionalCategory) {
+    promotionalCategory = await prisma.category.create({
+      data: {
+        championshipId: rallyChampionship.id,
+        name: 'PROMOCIONAL',
+        modality: 'RALLY',
+        allowsCodriver: true,
+        pointsApply: true,
+        createdById: admin.id,
+      },
+    });
+  }
+
+  const promotionalValidFrom = new Date('2025-01-01T00:00:00.000Z');
+
+  for (let i = 1; i <= 20; i++) {
+    const index = String(i).padStart(2, '0');
+
+    const driver = await prisma.driver.upsert({
+      where: {
+        email: `promocional.driver.${index}@test.local`,
+      },
+      update: {
+        firstName: `Piloto${index}`,
+        lastName: 'Promocional',
+        status: 'ACTIVE',
+      },
+      create: {
+        firstName: `Piloto${index}`,
+        lastName: 'Promocional',
+        documentType: 'CI',
+        documentNumber: `PROMO-DRV-${index}`,
+        licenseNumber: `PROMO-LIC-DRV-${index}`,
+        nationality: 'Boliviana',
+        email: `promocional.driver.${index}@test.local`,
+        status: 'ACTIVE',
+        createdById: admin.id,
+      },
+    });
+
+    const codriver = await prisma.driver.upsert({
+      where: {
+        email: `promocional.codriver.${index}@test.local`,
+      },
+      update: {
+        firstName: `Copiloto${index}`,
+        lastName: 'Promocional',
+        status: 'ACTIVE',
+      },
+      create: {
+        firstName: `Copiloto${index}`,
+        lastName: 'Promocional',
+        documentType: 'CI',
+        documentNumber: `PROMO-COD-${index}`,
+        licenseNumber: `PROMO-LIC-COD-${index}`,
+        nationality: 'Boliviana',
+        email: `promocional.codriver.${index}@test.local`,
+        status: 'ACTIVE',
+        createdById: admin.id,
+      },
+    });
+
+    let car = await prisma.car.findFirst({
+      where: {
+        brand: 'TEST',
+        model: `PROMOCIONAL-${index}`,
+        year: 2020 + (i % 5),
+      },
+    });
+
+    if (!car) {
+      car = await prisma.car.create({
+        data: {
+          brand: 'TEST',
+          model: `PROMOCIONAL-${index}`,
+          year: 2020 + (i % 5),
+          drivetrain: '4X4',
+          status: 'ACTIVE',
+          createdById: admin.id,
+        },
+      });
+    }
+
+    await prisma.carCategory.upsert({
+      where: {
+        carId_categoryId_validFrom: {
+          carId: car.id,
+          categoryId: promotionalCategory.id,
+          validFrom: promotionalValidFrom,
+        },
+      },
+      update: {},
+      create: {
+        carId: car.id,
+        categoryId: promotionalCategory.id,
+        validFrom: promotionalValidFrom,
+        createdById: admin.id,
+      },
+    });
+
+    const competitionNo = 9000 + i;
+    const existingTeam = await prisma.team.findFirst({
+      where: {
+        championshipId: rallyChampionship.id,
+        competitionNo,
+      },
+    });
+
+    if (!existingTeam) {
+      await prisma.team.create({
+        data: {
+          championshipId: rallyChampionship.id,
+          categoryId: promotionalCategory.id,
+          carId: car.id,
+          driverId: driver.id,
+          codriverId: codriver.id,
+          competitionNo,
+          status: 'INSCRIBED',
+          createdById: admin.id,
+        },
+      });
+    }
+  }
+
+  console.log('✅ Categoría PROMOCIONAL y 20 teams de prueba asegurados');
 }
 
 main()

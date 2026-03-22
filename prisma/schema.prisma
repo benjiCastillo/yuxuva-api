@@ -283,8 +283,8 @@ model Team {
   driver       Driver       @relation("TeamDriver", fields: [driverId], references: [id])
   codriver     Driver?      @relation("TeamCodriver", fields: [codriverId], references: [id])
 
-  rallyResults RallyStageResult[]
-  lapResults   LapResult[]
+  rallySchedules RallyStageSchedule[]
+  lapResults     LapResult[]
 
   createdById String
   updatedById String?
@@ -346,8 +346,8 @@ model RallyStage {
   stageOrder Int
   distanceKm Float
 
-  rally   Rally              @relation(fields: [rallyId], references: [id])
-  results RallyStageResult[]
+  rally     Rally                @relation(fields: [rallyId], references: [id])
+  schedules RallyStageSchedule[]
 
   createdById String
   updatedById String?
@@ -355,10 +355,32 @@ model RallyStage {
   createdAt DateTime @default(now())
 }
 
-model RallyStageResult {
+model RallyStageSchedule {
   id      String @id @default(uuid())
   stageId String
   teamId  String
+
+  startOrder         Int
+  scheduledStartTime DateTime?
+  status             String    @default("SCHEDULED") @db.VarChar(20)
+
+  stage  RallyStage        @relation(fields: [stageId], references: [id])
+  team   Team              @relation(fields: [teamId], references: [id])
+  result RallyStageResult?
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([stageId, teamId])
+  @@unique([stageId, startOrder])
+}
+
+model RallyStageResult {
+  id         String @id @default(uuid())
+  scheduleId String @unique
 
   startTime DateTime
   endTime   DateTime
@@ -366,15 +388,12 @@ model RallyStageResult {
   penalty Int    @default(0)
   status  String @default("OK") @db.VarChar(20)
 
-  stage RallyStage @relation(fields: [stageId], references: [id])
-  team  Team       @relation(fields: [teamId], references: [id])
+  schedule RallyStageSchedule @relation(fields: [scheduleId], references: [id])
 
   createdById String
   updatedById String?
 
   createdAt DateTime @default(now())
-
-  @@unique([stageId, teamId])
 }
 
 model RaceHeat {

@@ -4,7 +4,12 @@
 
 Este documento define la convención de uso para los campos `startTime`, `endTime`, `time`, `penalty` y `status` del modelo `RallyStageResult`.
 
-No se cambiarán los nombres de estos campos en la base de datos ni en la API, pero su significado funcional debe ser consistente en todo el sistema.
+`RallyStageResult` ahora representa el resultado efectivo de una participacion previamente programada en `RallyStageSchedule`.
+
+La relacion funcional esperada es:
+
+- `RallyStageSchedule`: define que equipo participa, con su orden de partida y hora programada
+- `RallyStageResult`: registra los tiempos reales de esa programacion
 
 ## Convención de tiempo
 
@@ -30,6 +35,7 @@ Hora de partida registrada para el equipo en la etapa.
 - Tipo recomendado de uso en API: ISO 8601
 - Se almacena como `DateTime`
 - Obligatorio en `POST`
+- Corresponde a la hora real registrada para la programacion seleccionada
 
 Ejemplo:
 
@@ -42,6 +48,7 @@ Hora de llegada registrada para el equipo en la etapa.
 - Tipo recomendado de uso en API: ISO 8601
 - Se almacena como `DateTime`
 - Obligatorio en `POST`
+- Corresponde a la hora real de llegada registrada para la programacion seleccionada
 
 Ejemplo:
 
@@ -132,8 +139,7 @@ Representación humana:
 
 ```json
 {
-  "stageId": "5e2e8a7a-1b6d-4f88-8d9a-3f4b2a7c9d11",
-  "teamId": "2a91d31d-3b97-48b6-b6d6-0c8bb0f6d9a4",
+  "scheduleId": "2a91d31d-3b97-48b6-b6d6-0c8bb0f6d9a4",
   "startTime": "2026-03-21T10:00:00.000Z",
   "endTime": "2026-03-21T10:14:05.237Z",
   "penalty": 10000,

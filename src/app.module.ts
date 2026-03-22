@@ -16,6 +16,7 @@ import { DriversModule } from './drivers/drivers.module';
 import { FederationsModule } from './federations/federations.module';
 import { RalliesModule } from './rallies/rallies.module';
 import { RallyStageResultsModule } from './rally-stage-results/rally-stage-results.module';
+import { RallyStageSchedulesModule } from './rally-stage-schedules/rally-stage-schedules.module';
 import { RallyStagesModule } from './rally-stages/rally-stages.module';
 import { TeamsModule } from './teams/teams.module';
 
@@ -56,6 +57,7 @@ import { TeamsModule } from './teams/teams.module';
     FederationsModule,
     RalliesModule,
     RallyStageResultsModule,
+    RallyStageSchedulesModule,
     RallyStagesModule,
     TeamsModule,
   ],

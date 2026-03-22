@@ -148,7 +148,7 @@ export class RallyStagesService {
   }
 
   async findOne(id: string) {
-    const rallyStage = await this.prisma.rallyStage.findUnique({
+    const rallyStage = await (this.prisma.rallyStage as any).findUnique({
       where: { id },
       select: {
         id: true,
@@ -188,15 +188,25 @@ export class RallyStagesService {
             },
           },
         },
-        results: {
+        schedules: {
           select: {
             id: true,
             teamId: true,
-            time: true,
-            penalty: true,
+            startOrder: true,
             status: true,
+            scheduledStartTime: true,
+            result: {
+              select: {
+                id: true,
+                time: true,
+                penalty: true,
+                status: true,
+                createdAt: true,
+              },
+            },
             createdAt: true,
           },
+          orderBy: { startOrder: 'asc' },
         },
         createdAt: true,
       },

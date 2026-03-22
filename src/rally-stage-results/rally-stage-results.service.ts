@@ -21,10 +21,8 @@ export class RallyStageResultsService {
     createRallyStageResultDto: CreateRallyStageResultDto,
     userId: string,
   ) {
-    await this.validateRelations(
-      createRallyStageResultDto.stageId,
-      createRallyStageResultDto.teamId,
-    );
+    await this.validateSchedule(createRallyStageResultDto.scheduleId);
+    await this.ensureScheduleHasNoResult(createRallyStageResultDto.scheduleId);
     const time = this.calculateTime(
       createRallyStageResultDto.startTime,
       createRallyStageResultDto.endTime,
@@ -33,8 +31,7 @@ export class RallyStageResultsService {
     try {
       return await this.rallyStageResultDelegate.create({
         data: {
-          stage: { connect: { id: createRallyStageResultDto.stageId } },
-          team: { connect: { id: createRallyStageResultDto.teamId } },
+          schedule: { connect: { id: createRallyStageResultDto.scheduleId } },
           startTime: new Date(createRallyStageResultDto.startTime),
           endTime: new Date(createRallyStageResultDto.endTime),
           time,
@@ -58,6 +55,7 @@ export class RallyStageResultsService {
     const {
       page,
       limit,
+      scheduleId,
       stageId,
       rallyId,
       calendarId,
@@ -69,14 +67,18 @@ export class RallyStageResultsService {
       timeTo,
     } = queryRallyStageResultDto;
     const skip = (page - 1) * limit;
-    const where: Prisma.RallyStageResultWhereInput = {};
+    const where: any = {};
+    const scheduleWhere: any = {};
     const stageWhere: Prisma.RallyStageWhereInput = {};
     const rallyWhere: Prisma.RallyWhereInput = {};
     const calendarWhere: Prisma.ChampionshipCalendarWhereInput = {};
     const teamWhere: Prisma.TeamWhereInput = {};
 
+    if (scheduleId) {
+      where.scheduleId = scheduleId;
+    }
     if (stageId) {
-      where.stageId = stageId;
+      scheduleWhere.stageId = stageId;
     }
     if (rallyId) {
       stageWhere.rallyId = rallyId;
@@ -95,16 +97,19 @@ export class RallyStageResultsService {
       stageWhere.rally = rallyWhere;
     }
     if (Object.keys(stageWhere).length > 0) {
-      where.stage = stageWhere;
+      scheduleWhere.stage = stageWhere;
     }
     if (teamId) {
-      where.teamId = teamId;
+      scheduleWhere.teamId = teamId;
     }
     if (categoryId) {
       teamWhere.categoryId = categoryId;
     }
     if (Object.keys(teamWhere).length > 0) {
-      where.team = teamWhere;
+      scheduleWhere.team = teamWhere;
+    }
+    if (Object.keys(scheduleWhere).length > 0) {
+      where.schedule = scheduleWhere;
     }
     if (status) {
       where.status = { equals: status, mode: 'insensitive' };
@@ -122,76 +127,11 @@ export class RallyStageResultsService {
         take: limit,
         where,
         orderBy: [
-          { stage: { stageOrder: 'asc' } },
+          { schedule: { stage: { stageOrder: 'asc' } } },
           { time: 'asc' },
           { penalty: 'asc' },
         ],
-        select: {
-          id: true,
-          stageId: true,
-          teamId: true,
-          startTime: true,
-          endTime: true,
-          time: true,
-          penalty: true,
-          status: true,
-          stage: {
-            select: {
-              id: true,
-              name: true,
-              stageType: true,
-              stageOrder: true,
-              distanceKm: true,
-              rally: {
-                select: {
-                  id: true,
-                  calendar: {
-                    select: {
-                      id: true,
-                      eventName: true,
-                      roundNumber: true,
-                      championship: {
-                        select: {
-                          id: true,
-                          name: true,
-                          season: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          team: {
-            select: {
-              id: true,
-              competitionNo: true,
-              status: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              driver: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-              codriver: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-          },
-          createdAt: true,
-        },
+        select: this.detailedSelect(),
       }),
       this.rallyStageResultDelegate.count({ where }),
     ]);
@@ -210,79 +150,7 @@ export class RallyStageResultsService {
   async findOne(id: string) {
     const result = await this.rallyStageResultDelegate.findUnique({
       where: { id },
-      select: {
-        id: true,
-        stageId: true,
-        teamId: true,
-        startTime: true,
-        endTime: true,
-        time: true,
-        penalty: true,
-        status: true,
-        stage: {
-          select: {
-            id: true,
-            name: true,
-            stageType: true,
-            stageOrder: true,
-            distanceKm: true,
-            rally: {
-              select: {
-                id: true,
-                totalKm: true,
-                calendar: {
-                  select: {
-                    id: true,
-                    eventName: true,
-                    roundNumber: true,
-                    championship: {
-                      select: {
-                        id: true,
-                        name: true,
-                        season: true,
-                        modality: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        team: {
-          select: {
-            id: true,
-            championshipId: true,
-            categoryId: true,
-            competitionNo: true,
-            status: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                modality: true,
-              },
-            },
-            driver: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                licenseNumber: true,
-              },
-            },
-            codriver: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                licenseNumber: true,
-              },
-            },
-          },
-        },
-        createdAt: true,
-      },
+      select: this.detailedSelect(),
     });
 
     if (!result) {
@@ -295,11 +163,13 @@ export class RallyStageResultsService {
   async selectData() {
     return await this.rallyStageResultDelegate.findMany({
       where: {
-        stage: {
-          rally: {
-            calendar: {
-              status: {
-                in: ['SCHEDULED', 'ONGOING'],
+        schedule: {
+          stage: {
+            rally: {
+              calendar: {
+                status: {
+                  in: ['SCHEDULED', 'ONGOING'],
+                },
               },
             },
           },
@@ -307,43 +177,48 @@ export class RallyStageResultsService {
       },
       select: {
         id: true,
-        stageId: true,
-        teamId: true,
+        scheduleId: true,
         startTime: true,
         endTime: true,
         time: true,
         penalty: true,
         status: true,
-        stage: {
+        schedule: {
           select: {
-            name: true,
-            stageOrder: true,
-            rally: {
+            startOrder: true,
+            scheduledStartTime: true,
+            stage: {
               select: {
-                calendar: {
+                name: true,
+                stageOrder: true,
+                rally: {
                   select: {
-                    eventName: true,
-                    roundNumber: true,
+                    calendar: {
+                      select: {
+                        eventName: true,
+                        roundNumber: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            team: {
+              select: {
+                competitionNo: true,
+                driver: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
                   },
                 },
               },
             },
           },
         },
-        team: {
-          select: {
-            competitionNo: true,
-            driver: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
       },
       orderBy: [
-        { stage: { stageOrder: 'asc' } },
+        { schedule: { stage: { stageOrder: 'asc' } } },
         { time: 'asc' },
         { penalty: 'asc' },
       ],
@@ -357,43 +232,24 @@ export class RallyStageResultsService {
   ) {
     let currentResult:
       | {
-          stageId: string;
-          teamId: string;
+          scheduleId: string;
           startTime: Date;
           endTime: Date;
         }
       | null = null;
 
-    if (updateRallyStageResultDto.stageId || updateRallyStageResultDto.teamId) {
-      currentResult = await this.rallyStageResultDelegate.findUnique({
-        where: { id },
-        select: {
-          stageId: true,
-          teamId: true,
-          startTime: true,
-          endTime: true,
-        },
-      });
-
-      if (!currentResult) {
-        throw new NotFoundException('Rally stage result not found');
-      }
-
-      await this.validateRelations(
-        updateRallyStageResultDto.stageId ?? currentResult.stageId,
-        updateRallyStageResultDto.teamId ?? currentResult.teamId,
-      );
+    if (updateRallyStageResultDto.scheduleId) {
+      await this.validateSchedule(updateRallyStageResultDto.scheduleId);
     }
 
     if (
       updateRallyStageResultDto.startTime ||
       updateRallyStageResultDto.endTime
     ) {
-      currentResult ??= await this.rallyStageResultDelegate.findUnique({
+      currentResult = await this.rallyStageResultDelegate.findUnique({
         where: { id },
         select: {
-          stageId: true,
-          teamId: true,
+          scheduleId: true,
           startTime: true,
           endTime: true,
         },
@@ -405,7 +261,8 @@ export class RallyStageResultsService {
     }
 
     const nextStartTime =
-      updateRallyStageResultDto.startTime ?? currentResult?.startTime.toISOString();
+      updateRallyStageResultDto.startTime ??
+      currentResult?.startTime.toISOString();
     const nextEndTime =
       updateRallyStageResultDto.endTime ?? currentResult?.endTime.toISOString();
     const nextTime =
@@ -417,11 +274,12 @@ export class RallyStageResultsService {
       return await this.rallyStageResultDelegate.update({
         where: { id },
         data: {
-          ...(updateRallyStageResultDto.stageId
-            ? { stage: { connect: { id: updateRallyStageResultDto.stageId } } }
-            : {}),
-          ...(updateRallyStageResultDto.teamId
-            ? { team: { connect: { id: updateRallyStageResultDto.teamId } } }
+          ...(updateRallyStageResultDto.scheduleId
+            ? {
+                schedule: {
+                  connect: { id: updateRallyStageResultDto.scheduleId },
+                },
+              }
             : {}),
           ...(updateRallyStageResultDto.startTime
             ? { startTime: new Date(updateRallyStageResultDto.startTime) }
@@ -429,9 +287,7 @@ export class RallyStageResultsService {
           ...(updateRallyStageResultDto.endTime
             ? { endTime: new Date(updateRallyStageResultDto.endTime) }
             : {}),
-          ...(nextTime !== undefined
-            ? { time: nextTime }
-            : {}),
+          ...(nextTime !== undefined ? { time: nextTime } : {}),
           ...(updateRallyStageResultDto.penalty !== undefined
             ? { penalty: updateRallyStageResultDto.penalty }
             : {}),
@@ -454,8 +310,7 @@ export class RallyStageResultsService {
         where: { id },
         select: {
           id: true,
-          stageId: true,
-          teamId: true,
+          scheduleId: true,
         },
       });
     } catch (error: unknown) {
@@ -469,20 +324,22 @@ export class RallyStageResultsService {
     }
   }
 
-  private async validateRelations(stageId: string, teamId: string) {
-    const [stage, team] = await Promise.all([
-      this.prisma.rallyStage.findUnique({
-        where: { id: stageId },
-        select: {
-          id: true,
-          rally: {
-            select: {
-              calendar: {
-                select: {
-                  championshipId: true,
-                  championship: {
-                    select: {
-                      modality: true,
+  private async validateSchedule(scheduleId: string) {
+    const schedule = await (this.prisma as any).rallyStageSchedule.findUnique({
+      where: { id: scheduleId },
+      select: {
+        id: true,
+        stage: {
+          select: {
+            id: true,
+            rally: {
+              select: {
+                calendar: {
+                  select: {
+                    championship: {
+                      select: {
+                        modality: true,
+                      },
                     },
                   },
                 },
@@ -490,44 +347,45 @@ export class RallyStageResultsService {
             },
           },
         },
-      }),
-      this.prisma.team.findUnique({
-        where: { id: teamId },
-        select: {
-          id: true,
-          championshipId: true,
-          category: {
-            select: {
-              modality: true,
+        team: {
+          select: {
+            id: true,
+            category: {
+              select: {
+                modality: true,
+              },
             },
           },
         },
-      }),
-    ]);
+      },
+    });
 
-    if (!stage) {
-      throw new NotFoundException('Rally stage not found');
+    if (!schedule) {
+      throw new NotFoundException('Rally stage schedule not found');
     }
 
-    if (!team) {
-      throw new NotFoundException('Team not found');
-    }
-
-    if (stage.rally.calendar.championship.modality !== 'RALLY') {
+    if (schedule.stage.rally.calendar.championship.modality !== 'RALLY') {
       throw new BadRequestException(
-        'La etapa seleccionada no pertenece a un campeonato de rally.',
+        'La programacion seleccionada no pertenece a un campeonato de rally.',
       );
     }
 
-    if (team.category.modality !== 'RALLY') {
+    if (schedule.team.category.modality !== 'RALLY') {
       throw new BadRequestException(
-        'El equipo seleccionado no pertenece a una categoria de rally.',
+        'El equipo programado no pertenece a una categoria de rally.',
       );
     }
+  }
 
-    if (stage.rally.calendar.championshipId !== team.championshipId) {
+  private async ensureScheduleHasNoResult(scheduleId: string) {
+    const existingResult = await this.rallyStageResultDelegate.findUnique({
+      where: { scheduleId },
+      select: { id: true },
+    });
+
+    if (existingResult) {
       throw new BadRequestException(
-        'El equipo no pertenece al mismo campeonato de la etapa seleccionada.',
+        'La programacion seleccionada ya tiene un resultado registrado.',
       );
     }
   }
@@ -535,10 +393,10 @@ export class RallyStageResultsService {
   private handleKnownErrors(error: unknown) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
+      (error.code === 'P2002' || error.code === 'P2014')
     ) {
       throw new BadRequestException(
-        'Ya existe un resultado para este equipo en la etapa seleccionada.',
+        'Ya existe un resultado para la programacion seleccionada.',
       );
     }
 
@@ -553,24 +411,114 @@ export class RallyStageResultsService {
   private baseSelect() {
     return {
       id: true,
-      stageId: true,
-      teamId: true,
+      scheduleId: true,
       startTime: true,
       endTime: true,
       time: true,
       penalty: true,
       status: true,
-      stage: {
+      schedule: {
         select: {
           id: true,
-          name: true,
-          stageOrder: true,
+          startOrder: true,
+          stage: {
+            select: {
+              id: true,
+              name: true,
+              stageOrder: true,
+            },
+          },
+          team: {
+            select: {
+              id: true,
+              competitionNo: true,
+            },
+          },
         },
       },
-      team: {
+      createdAt: true,
+    } as any;
+  }
+
+  private detailedSelect() {
+    return {
+      id: true,
+      scheduleId: true,
+      startTime: true,
+      endTime: true,
+      time: true,
+      penalty: true,
+      status: true,
+      schedule: {
         select: {
           id: true,
-          competitionNo: true,
+          stageId: true,
+          teamId: true,
+          startOrder: true,
+          scheduledStartTime: true,
+          status: true,
+          stage: {
+            select: {
+              id: true,
+              name: true,
+              stageType: true,
+              stageOrder: true,
+              distanceKm: true,
+              rally: {
+                select: {
+                  id: true,
+                  totalKm: true,
+                  calendar: {
+                    select: {
+                      id: true,
+                      eventName: true,
+                      roundNumber: true,
+                      championship: {
+                        select: {
+                          id: true,
+                          name: true,
+                          season: true,
+                          modality: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          team: {
+            select: {
+              id: true,
+              championshipId: true,
+              categoryId: true,
+              competitionNo: true,
+              status: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  modality: true,
+                },
+              },
+              driver: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  licenseNumber: true,
+                },
+              },
+              codriver: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  licenseNumber: true,
+                },
+              },
+            },
+          },
         },
       },
       createdAt: true,

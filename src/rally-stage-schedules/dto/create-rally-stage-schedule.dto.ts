@@ -10,22 +10,23 @@ import {
   Min,
 } from 'class-validator';
 
-export class CreateRallyStageResultDto {
+export class CreateRallyStageScheduleDto {
   @Transform(({ value }) => String(value ?? '').trim())
   @IsUUID()
-  scheduleId: string;
+  stageId: string;
 
-  @IsDateString()
-  startTime: string;
-
-  @IsDateString()
-  endTime: string;
+  @Transform(({ value }) => String(value ?? '').trim())
+  @IsUUID()
+  teamId: string;
 
   @Type(() => Number)
-  @IsOptional()
   @IsInt()
-  @Min(0)
-  penalty?: number;
+  @Min(1)
+  startOrder: number;
+
+  @IsOptional()
+  @IsDateString()
+  scheduledStartTime?: string;
 
   @Transform(({ value }) => {
     if (value === undefined || value === null) return undefined;
