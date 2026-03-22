@@ -337,8 +337,6 @@ async function main() {
     });
   }
 
-  const promotionalValidFrom = new Date('2025-01-01T00:00:00.000Z');
-
   for (let i = 1; i <= 20; i++) {
     const index = String(i).padStart(2, '0');
 
@@ -386,44 +384,6 @@ async function main() {
       },
     });
 
-    let car = await prisma.car.findFirst({
-      where: {
-        brand: 'TEST',
-        model: `PROMOCIONAL-${index}`,
-        year: 2020 + (i % 5),
-      },
-    });
-
-    if (!car) {
-      car = await prisma.car.create({
-        data: {
-          brand: 'TEST',
-          model: `PROMOCIONAL-${index}`,
-          year: 2020 + (i % 5),
-          drivetrain: '4X4',
-          status: 'ACTIVE',
-          createdById: admin.id,
-        },
-      });
-    }
-
-    await prisma.carCategory.upsert({
-      where: {
-        carId_categoryId_validFrom: {
-          carId: car.id,
-          categoryId: promotionalCategory.id,
-          validFrom: promotionalValidFrom,
-        },
-      },
-      update: {},
-      create: {
-        carId: car.id,
-        categoryId: promotionalCategory.id,
-        validFrom: promotionalValidFrom,
-        createdById: admin.id,
-      },
-    });
-
     const competitionNo = 9000 + i;
     const existingTeam = await prisma.team.findFirst({
       where: {
@@ -433,14 +393,16 @@ async function main() {
     });
 
     if (!existingTeam) {
-      await prisma.team.create({
+      await (prisma.team as any).create({
         data: {
           championshipId: rallyChampionship.id,
           categoryId: promotionalCategory.id,
-          carId: car.id,
           driverId: driver.id,
           codriverId: codriver.id,
           competitionNo,
+          carBrand: 'TEST',
+          carModel: `PROMOCIONAL-${index}`,
+          carYear: 2020 + (i % 5),
           status: 'INSCRIBED',
           createdById: admin.id,
         },

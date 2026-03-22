@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "CarCategory";
+DROP TABLE IF EXISTS "Car";

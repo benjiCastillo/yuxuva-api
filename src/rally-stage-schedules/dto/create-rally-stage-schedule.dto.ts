@@ -17,6 +17,10 @@ export class CreateRallyStageScheduleDto {
 
   @Transform(({ value }) => String(value ?? '').trim())
   @IsUUID()
+  categoryId: string;
+
+  @Transform(({ value }) => String(value ?? '').trim())
+  @IsUUID()
   teamId: string;
 
   @Type(() => Number)

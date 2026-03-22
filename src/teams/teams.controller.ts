@@ -41,8 +41,8 @@ export class TeamsController {
 
   @Roles('ADMIN')
   @Get('select-data')
-  selectData() {
-    return this.teamsService.selectData();
+  selectData(@Query() queryTeamDto: QueryTeamDto) {
+    return this.teamsService.selectData(queryTeamDto);
   }
 
   @Roles('ADMIN')

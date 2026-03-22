@@ -185,8 +185,14 @@ export class RallyStageResultsService {
         status: true,
         schedule: {
           select: {
+            categoryId: true,
             startOrder: true,
             scheduledStartTime: true,
+            category: {
+              select: {
+                name: true,
+              },
+            },
             stage: {
               select: {
                 name: true,
@@ -421,6 +427,13 @@ export class RallyStageResultsService {
         select: {
           id: true,
           startOrder: true,
+          categoryId: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           stage: {
             select: {
               id: true,
@@ -453,10 +466,18 @@ export class RallyStageResultsService {
         select: {
           id: true,
           stageId: true,
+          categoryId: true,
           teamId: true,
           startOrder: true,
           scheduledStartTime: true,
           status: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              modality: true,
+            },
+          },
           stage: {
             select: {
               id: true,

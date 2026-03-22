@@ -188,8 +188,8 @@ model Category {
 
   championship Championship @relation(fields: [championshipId], references: [id])
 
-  cars  CarCategory[]
-  teams Team[]
+  teams               Team[]
+  rallyStageSchedules RallyStageSchedule[]
 
   createdById String
   updatedById String?
@@ -198,44 +198,6 @@ model Category {
   updatedAt      DateTime        @updatedAt
   raceHeats      RaceHeat[]
   scoringSystems ScoringSystem[]
-}
-
-model Car {
-  id String @id @default(uuid())
-
-  brand      String  @db.VarChar(100)
-  model      String  @db.VarChar(100)
-  year       Int
-  drivetrain String? @db.VarChar(50)
-  status     String  @default("ACTIVE") @db.VarChar(20)
-
-  categories CarCategory[]
-  teams      Team[]
-
-  createdById String
-  updatedById String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model CarCategory {
-  id         String @id @default(uuid())
-  carId      String
-  categoryId String
-
-  validFrom DateTime
-  validTo   DateTime?
-
-  car      Car      @relation(fields: [carId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-
-  createdById String
-  updatedById String?
-
-  createdAt DateTime @default(now())
-
-  @@unique([carId, categoryId, validFrom])
 }
 
 model Driver {
@@ -269,17 +231,19 @@ model Team {
   id             String @id @default(uuid())
   championshipId String
   categoryId     String
-  carId          String
 
   driverId   String
   codriverId String?
+
+  carBrand String  @db.VarChar(100)
+  carModel String? @db.VarChar(100)
+  carYear  Int?
 
   competitionNo Int
   status        String @default("INSCRIBED") @db.VarChar(20)
 
   championship Championship @relation(fields: [championshipId], references: [id])
   category     Category     @relation(fields: [categoryId], references: [id])
-  car          Car          @relation(fields: [carId], references: [id])
   driver       Driver       @relation("TeamDriver", fields: [driverId], references: [id])
   codriver     Driver?      @relation("TeamCodriver", fields: [codriverId], references: [id])
 
@@ -359,14 +323,16 @@ model RallyStageSchedule {
   id      String @id @default(uuid())
   stageId String
   teamId  String
+  categoryId String
 
   startOrder         Int
   scheduledStartTime DateTime?
   status             String    @default("SCHEDULED") @db.VarChar(20)
 
-  stage  RallyStage        @relation(fields: [stageId], references: [id])
-  team   Team              @relation(fields: [teamId], references: [id])
-  result RallyStageResult?
+  stage    RallyStage        @relation(fields: [stageId], references: [id])
+  team     Team              @relation(fields: [teamId], references: [id])
+  category Category          @relation(fields: [categoryId], references: [id])
+  result   RallyStageResult?
 
   createdById String
   updatedById String?
@@ -375,7 +341,7 @@ model RallyStageSchedule {
   updatedAt DateTime @updatedAt
 
   @@unique([stageId, teamId])
-  @@unique([stageId, startOrder])
+  @@unique([stageId, categoryId, startOrder])
 }
 
 model RallyStageResult {

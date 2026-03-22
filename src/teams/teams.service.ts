@@ -17,16 +17,22 @@ export class TeamsService {
     await this.validateTeamRelations(createTeamDto);
 
     try {
-      return await this.prisma.team.create({
+      return await (this.prisma.team as any).create({
         data: {
           championship: { connect: { id: createTeamDto.championshipId } },
           category: { connect: { id: createTeamDto.categoryId } },
-          car: { connect: { id: createTeamDto.carId } },
           driver: { connect: { id: createTeamDto.driverId } },
           ...(createTeamDto.codriverId
             ? { codriver: { connect: { id: createTeamDto.codriverId } } }
             : {}),
           competitionNo: createTeamDto.competitionNo,
+          carBrand: createTeamDto.carBrand,
+          ...(createTeamDto.carModel !== undefined
+            ? { carModel: createTeamDto.carModel }
+            : {}),
+          ...(createTeamDto.carYear !== undefined
+            ? { carYear: createTeamDto.carYear }
+            : {}),
           ...(createTeamDto.status ? { status: createTeamDto.status } : {}),
           createdById: userId,
         },
@@ -44,14 +50,16 @@ export class TeamsService {
       limit,
       championshipId,
       categoryId,
-      carId,
+      carBrand,
+      carModel,
+      carYear,
       driverId,
       codriverId,
       competitionNo,
       status,
     } = queryTeamDto;
     const skip = (page - 1) * limit;
-    const where: Prisma.TeamWhereInput = {};
+    const where: any = {};
 
     if (championshipId) {
       where.championshipId = championshipId;
@@ -59,8 +67,14 @@ export class TeamsService {
     if (categoryId) {
       where.categoryId = categoryId;
     }
-    if (carId) {
-      where.carId = carId;
+    if (carBrand) {
+      where.carBrand = { contains: carBrand, mode: 'insensitive' };
+    }
+    if (carModel) {
+      where.carModel = { contains: carModel, mode: 'insensitive' };
+    }
+    if (carYear !== undefined) {
+      where.carYear = carYear;
     }
     if (driverId) {
       where.driverId = driverId;
@@ -76,7 +90,7 @@ export class TeamsService {
     }
 
     const [data, total] = await this.prisma.$transaction([
-      this.prisma.team.findMany({
+      (this.prisma.team as any).findMany({
         skip,
         take: limit,
         where,
@@ -85,10 +99,12 @@ export class TeamsService {
           id: true,
           championshipId: true,
           categoryId: true,
-          carId: true,
           driverId: true,
           codriverId: true,
           competitionNo: true,
+          carBrand: true,
+          carModel: true,
+          carYear: true,
           status: true,
           championship: {
             select: {
@@ -102,14 +118,6 @@ export class TeamsService {
               id: true,
               name: true,
               modality: true,
-            },
-          },
-          car: {
-            select: {
-              id: true,
-              brand: true,
-              model: true,
-              year: true,
             },
           },
           driver: {
@@ -145,16 +153,18 @@ export class TeamsService {
   }
 
   async findOne(id: string) {
-    const team = await this.prisma.team.findUnique({
+    const team = await (this.prisma.team as any).findUnique({
       where: { id },
       select: {
         id: true,
         championshipId: true,
         categoryId: true,
-        carId: true,
         driverId: true,
         codriverId: true,
         competitionNo: true,
+        carBrand: true,
+        carModel: true,
+        carYear: true,
         status: true,
         championship: {
           select: {
@@ -170,16 +180,6 @@ export class TeamsService {
             name: true,
             modality: true,
             allowsCodriver: true,
-          },
-        },
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true,
-            drivetrain: true,
-            status: true,
           },
         },
         driver: {
@@ -212,8 +212,67 @@ export class TeamsService {
     return team;
   }
 
-  async selectData() {
-    return await this.prisma.team.findMany({
+  async selectData(queryTeamDto: QueryTeamDto = new QueryTeamDto()) {
+    const {
+      championshipId,
+      categoryId,
+      stageId,
+      excludeScheduledForStage,
+      driverId,
+      codriverId,
+      competitionNo,
+      status,
+      carBrand,
+      carModel,
+      carYear,
+    } = queryTeamDto;
+
+    if (excludeScheduledForStage !== undefined && (!stageId || !categoryId)) {
+      throw new BadRequestException(
+        'excludeScheduledForStage solo puede usarse junto con stageId y categoryId.',
+      );
+    }
+
+    const where: any = {};
+
+    if (championshipId) {
+      where.championshipId = championshipId;
+    }
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+    if (driverId) {
+      where.driverId = driverId;
+    }
+    if (codriverId) {
+      where.codriverId = codriverId;
+    }
+    if (competitionNo !== undefined) {
+      where.competitionNo = competitionNo;
+    }
+    if (status) {
+      where.status = { equals: status, mode: 'insensitive' };
+    }
+    if (carBrand) {
+      where.carBrand = { contains: carBrand, mode: 'insensitive' };
+    }
+    if (carModel) {
+      where.carModel = { contains: carModel, mode: 'insensitive' };
+    }
+    if (carYear !== undefined) {
+      where.carYear = carYear;
+    }
+
+    if (stageId && categoryId && excludeScheduledForStage === true) {
+      where.rallySchedules = {
+        none: {
+          stageId,
+        },
+      };
+    }
+
+    return await (this.prisma.team as any).findMany({
+      where,
       select: {
         id: true,
         championshipId: true,
@@ -221,6 +280,9 @@ export class TeamsService {
         driverId: true,
         codriverId: true,
         competitionNo: true,
+        carBrand: true,
+        carModel: true,
+        carYear: true,
         status: true,
         championship: {
           select: {
@@ -231,13 +293,6 @@ export class TeamsService {
         category: {
           select: {
             name: true,
-          },
-        },
-        car: {
-          select: {
-            brand: true,
-            model: true,
-            year: true,
           },
         },
         driver: {
@@ -258,16 +313,18 @@ export class TeamsService {
   }
 
   async update(id: string, updateTeamDto: UpdateTeamDto, userId: string) {
-    const currentTeam = await this.prisma.team.findUnique({
+    const currentTeam: any = await (this.prisma.team as any).findUnique({
       where: { id },
       select: {
         id: true,
         championshipId: true,
         categoryId: true,
-        carId: true,
         driverId: true,
         codriverId: true,
         competitionNo: true,
+        carBrand: true,
+        carModel: true,
+        carYear: true,
         status: true,
       },
     });
@@ -280,20 +337,20 @@ export class TeamsService {
       championshipId:
         updateTeamDto.championshipId ?? currentTeam.championshipId,
       categoryId: updateTeamDto.categoryId ?? currentTeam.categoryId,
-      carId: updateTeamDto.carId ?? currentTeam.carId,
       driverId: updateTeamDto.driverId ?? currentTeam.driverId,
       codriverId:
         updateTeamDto.codriverId === undefined
           ? currentTeam.codriverId
           : updateTeamDto.codriverId,
       competitionNo: updateTeamDto.competitionNo ?? currentTeam.competitionNo,
+      carBrand: updateTeamDto.carBrand ?? currentTeam.carBrand,
       status: updateTeamDto.status ?? currentTeam.status,
     };
 
     await this.validateTeamRelations(nextTeam);
 
     try {
-      return await this.prisma.team.update({
+      return await (this.prisma.team as any).update({
         where: { id },
         data: {
           ...(updateTeamDto.championshipId
@@ -303,9 +360,6 @@ export class TeamsService {
             : {}),
           ...(updateTeamDto.categoryId
             ? { category: { connect: { id: updateTeamDto.categoryId } } }
-            : {}),
-          ...(updateTeamDto.carId
-            ? { car: { connect: { id: updateTeamDto.carId } } }
             : {}),
           ...(updateTeamDto.driverId
             ? { driver: { connect: { id: updateTeamDto.driverId } } }
@@ -317,6 +371,15 @@ export class TeamsService {
             : {}),
           ...(updateTeamDto.competitionNo !== undefined
             ? { competitionNo: updateTeamDto.competitionNo }
+            : {}),
+          ...(updateTeamDto.carBrand !== undefined
+            ? { carBrand: updateTeamDto.carBrand }
+            : {}),
+          ...(updateTeamDto.carModel !== undefined
+            ? { carModel: updateTeamDto.carModel }
+            : {}),
+          ...(updateTeamDto.carYear !== undefined
+            ? { carYear: updateTeamDto.carYear }
             : {}),
           ...(updateTeamDto.status !== undefined
             ? { status: updateTeamDto.status }
@@ -349,8 +412,8 @@ export class TeamsService {
   private async validateTeamRelations(team: {
     championshipId: string;
     categoryId: string;
-    carId: string;
     driverId: string;
+    carBrand: string;
     codriverId?: string | null;
   }) {
     if (team.codriverId && team.driverId === team.codriverId) {
@@ -359,25 +422,26 @@ export class TeamsService {
       );
     }
 
-    const [championship, category, car, driver] =
-      await this.prisma.$transaction([
-        this.prisma.championship.findUnique({
-          where: { id: team.championshipId },
-          select: { id: true },
-        }),
-        this.prisma.category.findUnique({
-          where: { id: team.categoryId },
-          select: { id: true, championshipId: true, allowsCodriver: true },
-        }),
-        this.prisma.car.findUnique({
-          where: { id: team.carId },
-          select: { id: true },
-        }),
-        this.prisma.driver.findUnique({
-          where: { id: team.driverId },
-          select: { id: true },
-        }),
-      ]);
+    if (!team.carBrand || team.carBrand.trim().length === 0) {
+      throw new BadRequestException(
+        'La marca del auto es obligatoria para el equipo.',
+      );
+    }
+
+    const [championship, category, driver] = await this.prisma.$transaction([
+      this.prisma.championship.findUnique({
+        where: { id: team.championshipId },
+        select: { id: true },
+      }),
+      this.prisma.category.findUnique({
+        where: { id: team.categoryId },
+        select: { id: true, championshipId: true, allowsCodriver: true },
+      }),
+      this.prisma.driver.findUnique({
+        where: { id: team.driverId },
+        select: { id: true },
+      }),
+    ]);
     const codriver = team.codriverId
       ? await this.prisma.driver.findUnique({
           where: { id: team.codriverId },
@@ -397,10 +461,6 @@ export class TeamsService {
       throw new BadRequestException(
         'La categoría debe pertenecer al campeonato seleccionado.',
       );
-    }
-
-    if (!car) {
-      throw new NotFoundException('Car not found');
     }
 
     if (!driver) {
@@ -423,10 +483,12 @@ export class TeamsService {
       id: true,
       championshipId: true,
       categoryId: true,
-      carId: true,
       driverId: true,
       codriverId: true,
       competitionNo: true,
+      carBrand: true,
+      carModel: true,
+      carYear: true,
       status: true,
       championship: {
         select: {
@@ -440,14 +502,6 @@ export class TeamsService {
           id: true,
           name: true,
           modality: true,
-        },
-      },
-      car: {
-        select: {
-          id: true,
-          brand: true,
-          model: true,
-          year: true,
         },
       },
       driver: {
@@ -464,7 +518,7 @@ export class TeamsService {
           lastName: true,
         },
       },
-    } satisfies Prisma.TeamSelect;
+    } as any;
   }
 
   private handleKnownErrors(error: unknown) {

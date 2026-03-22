@@ -23,6 +23,7 @@ export class RallyStageSchedulesService {
   ) {
     await this.validateRelations(
       createRallyStageScheduleDto.stageId,
+      createRallyStageScheduleDto.categoryId,
       createRallyStageScheduleDto.teamId,
     );
 
@@ -30,6 +31,7 @@ export class RallyStageSchedulesService {
       return await this.rallyStageScheduleDelegate.create({
         data: {
           stage: { connect: { id: createRallyStageScheduleDto.stageId } },
+          category: { connect: { id: createRallyStageScheduleDto.categoryId } },
           team: { connect: { id: createRallyStageScheduleDto.teamId } },
           startOrder: createRallyStageScheduleDto.startOrder,
           ...(createRallyStageScheduleDto.scheduledStartTime
@@ -102,6 +104,7 @@ export class RallyStageSchedulesService {
       where.teamId = teamId;
     }
     if (categoryId) {
+      where.categoryId = categoryId;
       teamWhere.categoryId = categoryId;
     }
     if (Object.keys(teamWhere).length > 0) {
@@ -169,10 +172,16 @@ export class RallyStageSchedulesService {
       select: {
         id: true,
         stageId: true,
+        categoryId: true,
         teamId: true,
         startOrder: true,
         scheduledStartTime: true,
         status: true,
+        category: {
+          select: {
+            name: true,
+          },
+        },
         stage: {
           select: {
             name: true,
@@ -213,15 +222,21 @@ export class RallyStageSchedulesService {
     let currentSchedule:
       | {
           stageId: string;
+          categoryId: string;
           teamId: string;
         }
       | null = null;
 
-    if (updateRallyStageScheduleDto.stageId || updateRallyStageScheduleDto.teamId) {
+    if (
+      updateRallyStageScheduleDto.stageId ||
+      updateRallyStageScheduleDto.categoryId ||
+      updateRallyStageScheduleDto.teamId
+    ) {
       currentSchedule = await this.rallyStageScheduleDelegate.findUnique({
         where: { id },
         select: {
           stageId: true,
+          categoryId: true,
           teamId: true,
         },
       });
@@ -232,6 +247,7 @@ export class RallyStageSchedulesService {
 
       await this.validateRelations(
         updateRallyStageScheduleDto.stageId ?? currentSchedule.stageId,
+        updateRallyStageScheduleDto.categoryId ?? currentSchedule.categoryId,
         updateRallyStageScheduleDto.teamId ?? currentSchedule.teamId,
       );
     }
@@ -242,6 +258,13 @@ export class RallyStageSchedulesService {
         data: {
           ...(updateRallyStageScheduleDto.stageId
             ? { stage: { connect: { id: updateRallyStageScheduleDto.stageId } } }
+            : {}),
+          ...(updateRallyStageScheduleDto.categoryId
+            ? {
+                category: {
+                  connect: { id: updateRallyStageScheduleDto.categoryId },
+                },
+              }
             : {}),
           ...(updateRallyStageScheduleDto.teamId
             ? { team: { connect: { id: updateRallyStageScheduleDto.teamId } } }
@@ -276,6 +299,7 @@ export class RallyStageSchedulesService {
         select: {
           id: true,
           stageId: true,
+          categoryId: true,
           teamId: true,
         },
       });
@@ -298,8 +322,12 @@ export class RallyStageSchedulesService {
     }
   }
 
-  private async validateRelations(stageId: string, teamId: string) {
-    const [stage, team] = await Promise.all([
+  private async validateRelations(
+    stageId: string,
+    categoryId: string,
+    teamId: string,
+  ) {
+    const [stage, category, team] = await Promise.all([
       this.prisma.rallyStage.findUnique({
         where: { id: stageId },
         select: {
@@ -320,11 +348,20 @@ export class RallyStageSchedulesService {
           },
         },
       }),
+      this.prisma.category.findUnique({
+        where: { id: categoryId },
+        select: {
+          id: true,
+          championshipId: true,
+          modality: true,
+        },
+      }),
       this.prisma.team.findUnique({
         where: { id: teamId },
         select: {
           id: true,
           championshipId: true,
+          categoryId: true,
           category: {
             select: {
               modality: true,
@@ -342,6 +379,10 @@ export class RallyStageSchedulesService {
       throw new NotFoundException('Team not found');
     }
 
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
     if (stage.rally.calendar.championship.modality !== 'RALLY') {
       throw new BadRequestException(
         'La etapa seleccionada no pertenece a un campeonato de rally.',
@@ -354,9 +395,27 @@ export class RallyStageSchedulesService {
       );
     }
 
+    if (category.modality !== 'RALLY') {
+      throw new BadRequestException(
+        'La categoria seleccionada no pertenece a rally.',
+      );
+    }
+
     if (stage.rally.calendar.championshipId !== team.championshipId) {
       throw new BadRequestException(
         'El equipo no pertenece al mismo campeonato de la etapa seleccionada.',
+      );
+    }
+
+    if (stage.rally.calendar.championshipId !== category.championshipId) {
+      throw new BadRequestException(
+        'La categoria no pertenece al mismo campeonato de la etapa seleccionada.',
+      );
+    }
+
+    if (team.categoryId !== category.id) {
+      throw new BadRequestException(
+        'El equipo no pertenece a la categoria seleccionada para la programacion.',
       );
     }
   }
@@ -374,9 +433,13 @@ export class RallyStageSchedulesService {
         );
       }
 
-      if (target.includes('stageId') && target.includes('startOrder')) {
+      if (
+        target.includes('stageId') &&
+        target.includes('categoryId') &&
+        target.includes('startOrder')
+      ) {
         throw new BadRequestException(
-          'El orden de partida ya esta asignado en la etapa seleccionada.',
+          'El orden de partida ya esta asignado para la categoria en la etapa seleccionada.',
         );
       }
 
@@ -397,10 +460,17 @@ export class RallyStageSchedulesService {
     return {
       id: true,
       stageId: true,
+      categoryId: true,
       teamId: true,
       startOrder: true,
       scheduledStartTime: true,
       status: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       stage: {
         select: {
           id: true,
@@ -431,10 +501,18 @@ export class RallyStageSchedulesService {
     return {
       id: true,
       stageId: true,
+      categoryId: true,
       teamId: true,
       startOrder: true,
       scheduledStartTime: true,
       status: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          modality: true,
+        },
+      },
       stage: {
         select: {
           id: true,
